@@ -1,0 +1,11 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+deixtra	.\main.cpp	/^row &deixtra(graph g, int s, int n) {$/;"	f
+graph	.\main.cpp	/^typedef vector< row > graph;$/;"	t	file:
+main	.\main.cpp	/^int main(int argc, const char *argv[])$/;"	f
+row	.\main.cpp	/^typedef vector< int > row;$/;"	t	file:
+test	.\main.cpp	/^void test(ifstream &in, ofstream &out) {$/;"	f
