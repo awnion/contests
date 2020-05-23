@@ -9,3 +9,7 @@
 .cproject
 
 *.pyc
+
+# binary mostly
+*.out
+*.exe
