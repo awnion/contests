@@ -1,6 +1,5 @@
 T = int(input())
 
-
 while T > 0:
     N = int(input())
 
@@ -20,6 +19,6 @@ while T > 0:
         elif x == 2:
             a.append(1)
         else:
-            a.append()
+            a.append(1)
 
     T -= 1
