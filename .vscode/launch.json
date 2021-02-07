@@ -4,5 +4,102 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        {
+            "name": "Py1",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/1/",
+            "program": "1.py",
+            "args": [
+                "<1.in",
+                // ">1.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py2",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/2/",
+            "program": "2.py",
+            "args": [
+                "<2.in",
+                // ">2.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py3",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/3/",
+            "program": "3.py",
+            "args": [
+                "<3.in",
+                // ">3.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py4",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/4/",
+            "program": "4.py",
+            "args": [
+                "<4.in",
+                // ">4.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py5",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/5/",
+            "program": "5.py",
+            "args": [
+                "<5.in",
+                // ">5.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py6",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/6/",
+            "program": "6.py",
+            "args": [
+                "<6.in",
+                // ">6.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py7",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/7/",
+            "program": "7.py",
+            "args": [
+                "<7.in",
+                // ">7.out",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Py8",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/current_contest/8/",
+            "program": "8.py",
+            "args": [
+                "<8.in",
+                // ">8.out",
+            ],
+            "console": "integratedTerminal"
+        },
+
     ]
 }

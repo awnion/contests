@@ -1,12 +1,11 @@
 .DS_Store
-
 .idea
-
 .ropeproject
-
-# eclipse
 .project
 .cproject
+
+current_contest
+current_contest*
 
 *.pyc
 

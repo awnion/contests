@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "/usr/local/anaconda3/bin/python",
-    "python.linting.enabled": false
+    "python.linting.enabled": false,
+    "python.pythonPath": "/Users/awnion/.virtualenvs/venv/bin/python"
 }
