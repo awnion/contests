@@ -4,6 +4,9 @@
 .project
 .cproject
 
+
+_current_contest
+_current_contest*
 current_contest
 current_contest*
 

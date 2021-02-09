@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 
-CURRENT_CONTEST_LINK='current_contest'
+CURRENT_CONTEST_LINK='_current_contest'
 TEMPLATES_DIR='_templates'
 
 
