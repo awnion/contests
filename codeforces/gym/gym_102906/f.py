@@ -1,15 +1,13 @@
 import os
 import sys
-from collections import deque
 from io import BytesIO, IOBase
-from typing import Tuple
 
 
 #######################################################
 #######################################################
 class FastIO(IOBase):
     newlines = 0
-    BUFSIZE = 8192
+    BUFSIZE = 1 << 13
 
     def __init__(self, file):
         self._fd = file.fileno()
@@ -19,8 +17,7 @@ class FastIO(IOBase):
 
     def read(self):
         while True:
-            b = os.read(self._fd, max(
-                os.fstat(self._fd).st_size, self.BUFSIZE))
+            b = os.read(self._fd, max(os.fstat(self._fd).st_size, self.BUFSIZE))
             if not b:
                 break
             ptr = self.buffer.tell()
@@ -30,8 +27,7 @@ class FastIO(IOBase):
 
     def readline(self):
         while self.newlines == 0:
-            b = os.read(self._fd, max(
-                os.fstat(self._fd).st_size, self.BUFSIZE))
+            b = os.read(self._fd, max(os.fstat(self._fd).st_size, self.BUFSIZE))
             self.newlines = b.count(b"\n") + (not b)
             ptr = self.buffer.tell()
             self.buffer.seek(0, 2), self.buffer.write(b), self.buffer.seek(ptr)
@@ -51,21 +47,23 @@ class IOWrapper(IOBase):
         self.writable = self.buffer.writable
         self.write = lambda s: self.buffer.write(s.encode("ascii"))
         self.read = lambda: self.buffer.read().decode("ascii")
-        self.readline = lambda: self.buffer.readline()  # .decode("ascii")
+        self.readline = lambda: self.buffer.readline().decode("ascii")
 
 
 sys.stdin, sys.stdout = IOWrapper(sys.stdin), IOWrapper(sys.stdout)
-def input(): return sys.stdin.readline()  # .rstrip("\r\n")
+def input(): return sys.stdin.readline().rstrip("\r\n")
 #####################################
 
 
-def pack(x: int, y: int) -> int:
-    return (x + 2) * 5005 + y + 2
-
-
-def unpack(h: int) -> Tuple[int, int]:
-    x, y = divmod(h, 5005)
-    return x - 2, y - 2
+def make_next_positions(a, n, k):
+    positions = [n + 1] * ((n + 2)*(k + 1))
+    for el in range(k):
+        cur = n + 1
+        for i in range(n - 1, -1, -1):
+            if a[i] == el + 1:
+                cur = i + 1
+            positions[i*k + el] = cur
+    return positions
 
 
 def main():
@@ -77,57 +75,50 @@ def main():
     n = len(a)
     m = len(b)
 
-    visited = dict()
+    next_pos_a = make_next_positions(a, n, k)
+    next_pos_b = make_next_positions(b, m, k)
 
-    q = deque()
-    q.append(pack(-1, -1))
+    n += 1
+    m += 1
+    
+    best_next_a = [-1]*(m + 1)
+    best_next_a[0] = 0
 
-    while q:
-        from_hash = q.popleft()
-        from_x, from_y = unpack(from_hash)
+    all_prev_pos = []
+    all_prev_el = []
 
-        c1 = 0
-        c2 = 0
+    it = 0
+    while best_next_a[m] < n:
+        new_best_next_a = [-1]*(m + 1)
+        prev_pos = [0]*(m + 1)
+        prev_el = [0]*(m + 1)
+        all_prev_pos.append(prev_pos)
+        all_prev_el.append(prev_el)
+        
+        for i in range(m, -1, -1):
+            if best_next_a[i] > -1:
+                for el in range(k):
+                    next_a = next_pos_a[best_next_a[i]*k + el]
+                    next_b = next_pos_b[i*k + el]
 
-        d1 = {}
-        d2 = {}
-        ss = set()
-
-        x = min(from_x + 1, n)
-        y = min(from_y + 1, m)
-
-        while x < n and c1 < k:
-            if a[x] not in d1:
-                d1[a[x]] = x
-                c1 += 1
-            x += 1
-
-        while y < m and c2 < k:
-            if b[y] not in d2:
-                d2[b[y]] = y
-                c2 += 1
-            y += 1
-
-        if c1 != k and c2 != k:
-            for el in range(1, k + 1):
-                if el not in d1 and el not in d2:
-                    s = [el]
-                    break
-            else:
-                s = [1, 1]
-            x, y = from_x, from_y
-            while x != -1 and y != -1:
-                s += (x < n) and a[x] or b[y],
-                x, y = unpack(visited[pack(x, y)])
-            print(len(s))
-            print(*s[::-1])
-            return
-
-        for el in range(1, k + 1):
-            to_hash = pack(d1.get(el, n), d2.get(el, m))
-            if to_hash not in visited:
-                visited[to_hash] = from_hash
-                q.append(to_hash)
+                    if next_a > new_best_next_a[next_b]:
+                        new_best_next_a[next_b] = next_a
+                        prev_pos[next_b] = i
+                        prev_el[next_b] = el
+        
+        best_next_a = new_best_next_a
+        it += 1
+        
+    s = []
+    j = m
+    while it > 0:
+        it -= 1
+        s += [all_prev_el[it][j] + 1]
+        j = all_prev_pos[it][j]
+    
+    print(len(s))
+    print(*s[::-1])
+    return
 
 
 if __name__ == '__main__':
