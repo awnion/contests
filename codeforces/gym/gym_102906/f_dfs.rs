@@ -27,78 +27,86 @@ fn read_vi<T: FromStr>(_len: usize) -> Vec<T> {
     }).collect()
 }
 
-fn pack(x: usize, y: usize) -> usize {
-    x * 5005 + y
+fn
+prep_refs(k: usize, n: usize, seq: &Vec<usize>)
+-> Vec<Vec<usize>> {
+    let mut r = vec![vec![n + 1; n + 2]; k];
+    for i in 0..k {
+        let mut cur = n + 1;
+        for j in (0..n).rev() {
+            if seq[j] == i + 1 {
+                cur = j + 1;
+            }
+            r[i][j] = cur;
+        }
+    }
+    r
 }
 
-
-fn unpack(h: usize) -> (usize, usize) {
-    (h / 5005, h % 5005)
-}
 
 fn main() {
-    let k: i64 = read_i();
-    let mut n: usize = read_i();
-    let a: Vec<i64> = read_vi(n);
-    let mut m: usize = read_i();
-    let b: Vec<i64> = read_vi(m);
+    let k: usize = read_i();
+    let n: usize = read_i();
+    let a: Vec<usize> = read_vi(n);
+    let m: usize = read_i();
+    let b: Vec<usize> = read_vi(m);
 
-    n = a.len();
-    m = b.len();
+    let n = a.len();
+    let m = b.len();
 
-    let mut visited = HashMap::new();
-    let mut q = VecDeque::with_capacity(n + m);
-    q.push_back(pack(0, 0));
+    if k == 1 {
+        println!("{}", n.max(m) + 1);
+        for _ in 0..n.max(m) + 1 {
+            print!("1 ");
+        }
+        return;
+    }
 
-    loop {
-        let from_hash = match q.pop_front() {
-            Some(from_hash) => from_hash,
-            _ => break
-        };
-        let (from_x, from_y) = unpack(from_hash);
+    let na = prep_refs(k, n, &a);
+    let nb = prep_refs(k, m, &b);
 
-        for el in 1..=k {
-            let mut x = from_x;
-            let mut y = from_y;
+    let mut cache = vec![vec![usize::MAX; m + 2]; n + 2];
 
-            while x < n && a[x] != el {
-                x += 1;
-            }
+    struct FEnv {
+        na: Vec<Vec<usize>>,
+        nb: Vec<Vec<usize>>,
+        n: usize,
+        m: usize,
+        k: usize,
+    };
 
-            while y < m && b[y] != el {
-                y += 1;
-            }
+    let env = FEnv {
+        na: na,
+        nb: nb,
+        n: n,
+        m: m,
+        k: k,
+    };
 
-            if x >= n && y >= m {
-                let mut ans = VecDeque::new();
-                ans.push_back(el);
-                let (mut x, mut y) = (from_x, from_y);
-                while x != 0 && y != 0 {
-                    ans.push_front( if x <= n { a[x-1] } else { b[y-1] });
-                    let new_pack = match visited.get(&pack(x, y)) {
-                        Some(&n) => n,
-                        _ => panic!("cant find a key in hash")
-                    };
-                    let new_pack = unpack(new_pack);
-                    x = new_pack.0;
-                    y = new_pack.1;
-                }
-                println!("{}", ans.len());
-                let ans_string = ans
-                    .into_iter()
-                    .map(|e| e.to_string())
-                    .collect::<Vec<String>>()
-                    .join(" ");
-                println!("{}", ans_string);
-                return;
-            }
+    fn dp(e: &FEnv, i: usize, j: usize, cache: &mut Vec<Vec<usize>>) -> usize {
+        if i > e.n && j > e.m { return 0 }
+        if cache[i][j] < usize::MAX { return cache[i][j] }
+        let mut r = usize::MAX;
+        for el in 0..e.k {
+            r = r.min(dp(e, e.na[el][i], e.nb[el][j], cache) + 1);
+        }
+        cache[i][j] = r;
+        r
+    };
 
-            let to_hash = pack(n.min(x) + 1, m.min(y) + 1);
-            if !visited.contains_key(&to_hash) {
-                visited.insert(to_hash, from_hash);
-                q.push_back(to_hash);
+    fn backtrack(e: &FEnv, i: usize, j: usize, cache: &mut Vec<Vec<usize>>, r: usize) {
+        if r == 0 { return }
+        for el in 0..e.k {
+            if r - 1 == dp(e, e.na[el][i], e.nb[el][j], cache) {
+                print!("{} ", el + 1);
+                backtrack(e, e.na[el][i], e.nb[el][j], cache, r - 1);
+                break;
             }
         }
-
     }
+
+    let r = dp(&env, 0, 0, &mut cache);
+    println!("{}", r);
+    backtrack(&env, 0, 0, &mut cache, r);
+    println!();
 }
