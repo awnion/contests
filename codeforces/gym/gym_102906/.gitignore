@@ -1,1 +1,8 @@
 tests
+target
+*.dSYM
+src
+
+f
+a.out
+f_dfs
