@@ -80,7 +80,7 @@ def main():
 
     n += 1
     m += 1
-    
+
     best_next_a = [-1]*(m + 1)
     best_next_a[0] = 0
 
@@ -94,7 +94,7 @@ def main():
         prev_el = [0]*(m + 1)
         all_prev_pos.append(prev_pos)
         all_prev_el.append(prev_el)
-        
+
         for i in range(m, -1, -1):
             if best_next_a[i] > -1:
                 for el in range(k):
@@ -105,17 +105,17 @@ def main():
                         new_best_next_a[next_b] = next_a
                         prev_pos[next_b] = i
                         prev_el[next_b] = el
-        
+
         best_next_a = new_best_next_a
         it += 1
-        
+
     s = []
     j = m
     while it > 0:
         it -= 1
         s += [all_prev_el[it][j] + 1]
         j = all_prev_pos[it][j]
-    
+
     print(len(s))
     print(*s[::-1])
     return

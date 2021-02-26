@@ -79,11 +79,6 @@ impl Solution {
     }
 }
 
-// #[inline]
-// fn f(i: U, j: U) -> usize {
-//     USIZE * i as usize + j as usize
-// }
-
 
 fn main() {
     let k: U = read_i();

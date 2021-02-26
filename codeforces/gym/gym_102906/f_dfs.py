@@ -1,4 +1,3 @@
-from ctypes import Union
 import os
 import sys
 from io import BytesIO, IOBase
