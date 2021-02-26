@@ -5,17 +5,7 @@
 
 using namespace std;
 
-// #define pb push_back
-// #define pf push_front
-// #define pob pop_back
-// #define pof pop_front
-// #define mp make_pair
-// #define fi first
-// #define se second
-
 typedef long long lli;
-// typedef pair<int, int> ii;
-// typedef pair<lli, lli> ll;
 
 int k, n, m, a[5005], b[5005], na[5005][5005], nb[5005][5005], memo[5005][5005];
 

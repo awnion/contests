@@ -1,17 +1,7 @@
 
 #![allow(unused_imports, unused_macros)]
 
-use std::{
-    any::type_name,
-    cmp,
-    collections::*,
-    collections::HashMap,
-    fmt::Debug,
-    io::{self, prelude::*},
-    iter,
-    mem::{replace, swap},
-    str::FromStr
-};
+use std::{any::type_name, cmp, collections::*, collections::HashMap, fmt::Debug, io::{self, prelude::*}, iter, mem::{replace, swap}, result, str::FromStr, usize};
 
 pub fn readline() -> String {
     let mut s = String::new();
@@ -29,64 +19,81 @@ fn read_vi<T: FromStr>(_len: usize) -> Vec<T> {
     }).collect()
 }
 
-fn prep_refs(k: usize, n: usize, seq: &Vec<usize>) -> Vec<usize> {
-    let mut r = vec![n + 1; 5005 * k];
-    for i in 0..k {
-        let mut cur = n + 1;
-        for j in (0..n).rev() {
-            if seq[j] == i + 1 {
-                cur = j + 1;
+type U = u16;
+const SIZE: U = 5005;
+const USIZE: usize = SIZE as usize;
+
+struct Solution {
+    k: U,
+    n: U,
+    m: U,
+    na: Vec<U>,
+    nb: Vec<U>,
+    cache: Vec<U>,
+}
+
+macro_rules! g {
+    ( $i:tt, $j:tt ) => {
+        ($i as usize * USIZE) + ($j as usize)
+    };
+}
+
+impl Solution {
+    fn dp(&mut self, i: U, j: U) -> U {
+        if i > self.n && j > self.m { return 0 }
+
+        let r = self.cache[g![i, j]];
+        if r < U::MAX { return r }
+
+        let mut r = U::MAX;
+        for el in 0..self.k as usize {
+            r = r.min(self.dp(self.na[g!{el, i}], self.nb[g![el, j]]) + 1);
+        }
+        self.cache[g![i, j]] = r;
+        r
+    }
+
+    fn backtrack(&mut self, i: U, j: U, r: U) {
+        if r == 0 { return }
+        for el in 0..self.k {
+            if r - 1 == self.dp(self.na[g![el, i]], self.nb[g![el, j]]) {
+                print!("{} ", el + 1);
+                self.backtrack(self.na[g![el, i]], self.nb[g![el, j]], r - 1);
+                break;
             }
-            r[i * 5005 + j] = cur;
         }
     }
-    r
-}
 
-struct FEnv {
-    na: Vec<usize>,
-    nb: Vec<usize>,
-    n: usize,
-    m: usize,
-    k: usize,
-}
-
-fn dp(e: &FEnv, i: usize, j: usize, cache: &mut[usize]) -> usize {
-    if i > e.n && j > e.m { return 0 }
-
-    let r = cache[i * 5005 + j];
-
-    if r < usize::MAX { return r }
-
-    let mut r = usize::MAX;
-    for el in 0..e.k {
-        r = r.min(dp(e, e.na[el * 5005 + i], e.nb[el * 5005 + j], cache) + 1)
-    }
-    cache[i * 5005 + j] = r;
-    r
-}
-
-
-fn backtrack(e: &FEnv, i: usize, j: usize, cache: &mut[usize], r: usize) {
-    if r == 0 { return }
-    for el in 0..e.k {
-        if r - 1 == dp(e, e.na[el * 5005 + i], e.nb[el * 5005 + j], cache) {
-            print!("{} ", el + 1);
-            backtrack(e, e.na[el * 5005 + i], e.nb[el * 5005 + j], cache, r - 1);
-            break;
+    fn prep_refs(k: U, n: U, seq: Vec<U>) -> Vec<U> {
+        let mut r = vec![n + 1; USIZE * USIZE];
+        for el in 0..k {
+            let mut cur = n + 1;
+            for j in (0..n).rev() {
+                if seq[j as usize] == el + 1 {
+                    cur = j as U + 1;
+                }
+                r[g![el, j]] = cur;
+            }
         }
+        r
     }
 }
+
+// #[inline]
+// fn f(i: U, j: U) -> usize {
+//     USIZE * i as usize + j as usize
+// }
+
 
 fn main() {
-    let k: usize = read_i();
-    let n: usize = read_i();
-    let a: Vec<usize> = read_vi(n);
-    let m: usize = read_i();
-    let b: Vec<usize> = read_vi(m);
+    let k: U = read_i();
+    let n: U = read_i();
+    let a: Vec<U> = read_vi(n as usize);
+    let m: U = read_i();
+    let b: Vec<U> = read_vi(m as usize);
 
-    let n = a.len();
-    let m = b.len();
+    let n = a.len() as U;
+    let m = b.len() as U;
 
     if k == 1 {
         println!("{}", n.max(m) + 1);
@@ -94,14 +101,14 @@ fn main() {
         return;
     }
 
-    let na = prep_refs(k, n, &a);
-    let nb = prep_refs(k, m, &b);
+    let na = Solution::prep_refs(k, n, a);
+    let nb = Solution::prep_refs(k, m, b);
+    let cache = vec![U::MAX; USIZE * USIZE];
 
-    let mut cache = vec![usize::MAX; 5005 * 5005];
-    let env = FEnv { na, nb, n, m, k };
+    let mut solution = Solution { k, n, m, na, nb, cache };
 
-    let r = dp(&env, 0, 0, &mut cache);
+    let r = solution.dp(0, 0);
     println!("{}", r);
-    backtrack(&env, 0, 0, &mut cache, r);
+    solution.backtrack(0, 0, r);
     println!();
 }
