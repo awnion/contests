@@ -33,7 +33,7 @@ struct Solution {
 }
 
 macro_rules! g {
-    ( $i:tt, $j:tt ) => {
+    ( $i:expr, $j:expr ) => {
         ($i as usize * USIZE) + ($j as usize)
     };
 }
@@ -47,7 +47,7 @@ impl Solution {
 
         let mut r = U::MAX;
         for el in 0..self.k as usize {
-            r = r.min(self.dp(self.na[g!{el, i}], self.nb[g![el, j]]) + 1);
+            r = r.min(self.dp(self.na[g![i, el]], self.nb[g![j, el]]) + 1);
         }
         self.cache[g![i, j]] = r;
         r
@@ -56,9 +56,9 @@ impl Solution {
     fn backtrack(&mut self, i: U, j: U, r: U) {
         if r == 0 { return }
         for el in 0..self.k {
-            if r - 1 == self.dp(self.na[g![el, i]], self.nb[g![el, j]]) {
+            if r - 1 == self.dp(self.na[g![i, el]], self.nb[g![j, el]]) {
                 print!("{} ", el + 1);
-                self.backtrack(self.na[g![el, i]], self.nb[g![el, j]], r - 1);
+                self.backtrack(self.na[g![i, el]], self.nb[g![j, el]], r - 1);
                 break;
             }
         }
@@ -66,14 +66,14 @@ impl Solution {
 
     fn prep_refs(k: U, n: U, seq: Vec<U>) -> Vec<U> {
         let mut r = vec![n + 1; USIZE * USIZE];
-        for el in 0..k {
-            let mut cur = n + 1;
-            for j in (0..n).rev() {
-                if seq[j as usize] == el + 1 {
-                    cur = j as U + 1;
-                }
-                r[g![el, j]] = cur;
+        for j in (0..n as usize).rev() {
+            let shift = g![j, 0];
+            let shift2 = g![j + 1, 0];
+
+            for el in 0..k as usize {
+                r[shift + el] = r[shift2 + el];
             }
+            r[shift + seq[j] as usize - 1] = j as U + 1;
         }
         r
     }
