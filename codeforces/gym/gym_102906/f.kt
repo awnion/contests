@@ -14,13 +14,12 @@ data class Solution constructor(
     private var shift: Int = 0
 
     private fun makeRefs(k: Int, a: List<Int>): IntArray {
-        val size = a.size + 2
-        val r = IntArray(size * k) { a.size + 1 }
+        val r = IntArray((a.size + 2) * k) { a.size + 1 }
         var leftShift: Int
         var rightShift: Int
         for (j in a.size - 1 downTo 0) {
-            leftShift = j * size
-            rightShift = leftShift + size
+            leftShift = j * k
+            rightShift = leftShift + k
 
             for (el in 0 until k) r[leftShift + el] = r[rightShift + el]
             r[leftShift + a[j] - 1] = j + 1
@@ -40,13 +39,13 @@ data class Solution constructor(
     fun dp(i: Int, j: Int): Int {
         if (i > n && j > m) { return 0 }
 
-        val h = shift*i + j
+        val h = i + shift*j
         var r = cache[h]
         if (r < Int.MAX_VALUE) { return r }
 
         r = Int.MAX_VALUE
         for (el in 0 until k) {
-            r = min(r, dp(na[(n + 2)*i + el], nb[(m + 2)*j + el]) + 1)
+            r = min(r, dp(na[k*i + el], nb[k*j + el]) + 1)
         }
         cache[h] = r
         return r
@@ -55,9 +54,9 @@ data class Solution constructor(
     fun backtrack(i: Int, j: Int, r: Int) {
         if (r == 0) return
         for (el in 0 until k) {
-            if (r - 1 == dp(na[(n + 2)*i + el], nb[(m + 2)*j + el]) + 1) {
+            if (r - 1 == dp(na[k*i + el], nb[k*j + el])) {
                 print("${el + 1} ")
-                backtrack(na[(n + 2)*i + el], nb[(m + 2)*j + el], r - 1)
+                backtrack(na[k*i + el], nb[k*j + el], r - 1)
                 break
             }
         }
