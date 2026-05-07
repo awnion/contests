@@ -1,8 +1,5 @@
-tests
 target
+build/
 *.dSYM
-src
 
-f
 a.out
-f_dfs
