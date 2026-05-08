@@ -7,9 +7,9 @@ const MAX_M: usize = 5000;
 const MAX_N: usize = 5000;
 const MAX_ROWS: usize = MAX_M + 2;
 const MAX_COLS: usize = MAX_N + 2;
-const MAX_CELLS: usize = MAX_ROWS * MAX_COLS;
 const MAX_ANSWER: usize = MAX_M + MAX_N + 2;
 const MAX_VALUE: usize = MAX_ANSWER + 1;
+const SMALL_K_LIMIT: usize = 3;
 
 struct Solver {
     k: usize,
@@ -26,26 +26,8 @@ struct Solver {
     last_b: [u16; MAX_K + 1],
     cnt_a: [u16; MAX_K + 1],
     cnt_b: [u16; MAX_K + 1],
-    dp: [MaybeUninit<u16>; MAX_CELLS],
+    dp: Vec<MaybeUninit<u16>>,
 }
-
-static mut SOLVER: Solver = Solver {
-    k: 0,
-    m: 0,
-    n: 0,
-    cols: 0,
-    fail_row: 0,
-    fail_col: 0,
-    a: [0; MAX_ROWS],
-    b: [0; MAX_COLS],
-    first_a: [0; MAX_K + 1],
-    first_b: [0; MAX_K + 1],
-    last_a: [0; MAX_K + 1],
-    last_b: [0; MAX_K + 1],
-    cnt_a: [0; MAX_K + 1],
-    cnt_b: [0; MAX_K + 1],
-    dp: [MaybeUninit::uninit(); MAX_CELLS],
-};
 
 impl Solver {
     #[inline(always)]
@@ -217,6 +199,143 @@ impl Solver {
         }
     }
 
+    fn build_dp_small(&mut self) {
+        let mut next_a_base = [0usize; MAX_K + 1];
+        let mut value = [0u16; MAX_K + 1];
+
+        let fail_row_base = self.fail_row * self.cols;
+        unsafe {
+            self.dp
+                .get_unchecked_mut(fail_row_base + self.fail_col)
+                .write(0);
+        }
+        for x in 1..=self.k {
+            next_a_base[x] = fail_row_base;
+        }
+
+        for row in (0..=self.fail_row).rev() {
+            let row_base = row * self.cols;
+
+            let mut min_value = u16::MAX;
+            for x in 1..=self.k {
+                let v = unsafe {
+                    self.dp
+                        .get_unchecked(next_a_base[x] + self.fail_col)
+                        .assume_init()
+                };
+                value[x] = v;
+                if v < min_value {
+                    min_value = v;
+                }
+            }
+
+            for col in (0..=self.fail_col).rev() {
+                let id = row_base + col;
+                if row == self.fail_row && col == self.fail_col {
+                    unsafe {
+                        self.dp.get_unchecked_mut(id).write(0);
+                    }
+                } else {
+                    unsafe {
+                        self.dp.get_unchecked_mut(id).write(min_value + 1);
+                    }
+                }
+
+                if col > 0 && col <= self.n {
+                    let x = self.b[col] as usize;
+                    let old_value = value[x];
+                    let new_value = unsafe {
+                        self.dp
+                            .get_unchecked(next_a_base[x] + col)
+                            .assume_init()
+                    };
+                    if new_value != old_value {
+                        value[x] = new_value;
+                        if old_value == min_value {
+                            min_value = value[1];
+                            for y in 2..=self.k {
+                                if value[y] < min_value {
+                                    min_value = value[y];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if row > 0 && row <= self.m {
+                next_a_base[self.a[row] as usize] = row_base;
+            }
+        }
+    }
+
+    fn build_dp_2(&mut self) {
+        let mut next_a1_base = self.fail_row * self.cols;
+        let mut next_a2_base = next_a1_base;
+        let fail_row_base = next_a1_base;
+
+        unsafe {
+            self.dp
+                .get_unchecked_mut(fail_row_base + self.fail_col)
+                .write(0);
+        }
+
+        for row in (0..=self.fail_row).rev() {
+            let row_base = row * self.cols;
+            let mut v1 = unsafe {
+                self.dp
+                    .get_unchecked(next_a1_base + self.fail_col)
+                    .assume_init()
+            };
+            let mut v2 = unsafe {
+                self.dp
+                    .get_unchecked(next_a2_base + self.fail_col)
+                    .assume_init()
+            };
+            let mut min_value = if v1 < v2 { v1 } else { v2 };
+
+            unsafe {
+                self.dp
+                    .get_unchecked_mut(row_base + self.fail_col)
+                    .write(if row == self.fail_row { 0 } else { min_value + 1 });
+            }
+
+            for col in (1..=self.n).rev() {
+                unsafe {
+                    self.dp
+                        .get_unchecked_mut(row_base + col)
+                        .write(min_value + 1);
+                }
+
+                if self.b[col] == 1 {
+                    let old = v1;
+                    v1 = unsafe { self.dp.get_unchecked(next_a1_base + col).assume_init() };
+                    if old == min_value {
+                        min_value = if v1 < v2 { v1 } else { v2 };
+                    }
+                } else {
+                    let old = v2;
+                    v2 = unsafe { self.dp.get_unchecked(next_a2_base + col).assume_init() };
+                    if old == min_value {
+                        min_value = if v1 < v2 { v1 } else { v2 };
+                    }
+                }
+            }
+
+            unsafe {
+                self.dp.get_unchecked_mut(row_base).write(min_value + 1);
+            }
+
+            if row > 0 && row <= self.m {
+                if self.a[row] == 1 {
+                    next_a1_base = row_base;
+                } else {
+                    next_a2_base = row_base;
+                }
+            }
+        }
+    }
+
     fn next_a_pos(&self, pos: usize, ch: u16) -> usize {
         let mut p = pos + 1;
         while p <= self.m {
@@ -240,7 +359,13 @@ impl Solver {
     }
 
     fn solve(&mut self) -> ([u16; MAX_ANSWER], usize) {
-        self.build_dp();
+        if self.k == 2 {
+            self.build_dp_2();
+        } else if self.k <= SMALL_K_LIMIT {
+            self.build_dp_small();
+        } else {
+            self.build_dp();
+        }
 
         let mut answer = [0u16; MAX_ANSWER];
         let mut len = 0usize;
@@ -288,7 +413,7 @@ impl Solver {
     }
 }
 
-fn run(solver: &mut Solver) -> String {
+fn run() -> String {
     let mut input = [0u8; 1 << 20];
     let mut len = 0usize;
     loop {
@@ -299,6 +424,24 @@ fn run(solver: &mut Solver) -> String {
         len += read;
     }
     let mut scan_pos = 0usize;
+
+    let mut solver = Solver {
+        k: 0,
+        m: 0,
+        n: 0,
+        cols: 0,
+        fail_row: 0,
+        fail_col: 0,
+        a: [0; MAX_ROWS],
+        b: [0; MAX_COLS],
+        first_a: [0; MAX_K + 1],
+        first_b: [0; MAX_K + 1],
+        last_a: [0; MAX_K + 1],
+        last_b: [0; MAX_K + 1],
+        cnt_a: [0; MAX_K + 1],
+        cnt_b: [0; MAX_K + 1],
+        dp: Vec::new(),
+    };
 
     solver.k = next_usize(&input[..len], &mut scan_pos);
     solver.m = next_usize(&input[..len], &mut scan_pos);
@@ -374,6 +517,12 @@ fn run(solver: &mut Solver) -> String {
         }
     }
 
+    let total = (solver.fail_row + 1) * solver.cols;
+    solver.dp = Vec::with_capacity(total);
+    unsafe {
+        solver.dp.set_len(total);
+    }
+
     let (answer, answer_len) = solver.solve();
 
     let mut out = String::new();
@@ -401,6 +550,5 @@ fn next_usize(input: &[u8], pos: &mut usize) -> usize {
 }
 
 fn main() {
-    let out = unsafe { run(&mut *(&raw mut SOLVER)) };
-    print!("{}", out);
+    print!("{}", run());
 }
