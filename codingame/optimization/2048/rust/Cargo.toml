@@ -1,0 +1,11 @@
+[package]
+name = "cg-2048"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Only crates CodinGame provides may be added here, see ../../../AGENTS.md
+[dependencies]
+
+[profile.release]
+debug = true
