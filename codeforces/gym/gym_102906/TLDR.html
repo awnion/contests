@@ -83,6 +83,11 @@
   .family ul { font-size: 17px; color: var(--muted); }
   .family code { white-space: normal; }
 
+  tr.section td { padding: 22px 0 10px; white-space: normal; border-top: 2px solid var(--muted); }
+  .title { margin: 0 0 2px; font-size: 24px; font-weight: 600; line-height: 1.3; }
+  .title .tag { color: var(--accent); }
+  a { color: var(--accent); }
+  .note { margin: 0; font-size: 17px; color: var(--muted); }
   .table-wrap { overflow-x: auto; }
   table { width: max-content; max-width: 100%; border-collapse: collapse; }
   td { padding: 7px 28px 7px 0; text-align: left; vertical-align: top; white-space: nowrap; }
@@ -133,7 +138,7 @@
       </ul>
     </section>
     <section class="family disclaimer">
-      <h2><span class="tag">DISCLAIMER!</span> <small>On Codeforces <code>Rust</code> can’t use a 100 MB static stack, unlike <code>C++</code>. <span class="dim">So it’s not an apples-to-apples comparison. All numbers are just for illustration.</span></small></h2>
+      <h2><span class="tag">DISCLAIMER!</span> <small>On Codeforces <code>Rust</code> can’t use a 100 MB static stack, unlike <code>C++</code>. <span class="dim">So it’s not an apples-to-apples comparison. All numbers are just for illustration.</span> <a href="#honest-bench">→ Honest bench</a></small></h2>
     </section>
   </div>
 
@@ -246,6 +251,89 @@
           <td><span class="lang cpp">C++23</span></td>
           <td class="num win">78<span class="unit">ms</span></td>
           <td class="num">11.8<span class="unit">MB</span></td>
+        </tr>
+        <tr class="section">
+          <td colspan="6">
+            <h2 id="honest-bench" class="title"><span class="tag">Honest bench:</span> we use the latest <code>C++</code> and <code>Rust</code> compilers and count only the progression of the solutions:</h2>
+            <p class="note">every accepted <code>C++</code> / <code>Rust</code> submission, downloaded from Codeforces and rebuilt on one machine (M2 Max, <code>clang 21 -std=c++23</code>, <code>rustc 1.102</code>); worst test time and peak memory over 82 tests</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what"><p>Layered DP: five full <code>5005 × 5005</code> <code>int</code> tables</p></td>
+          <td><span class="lang cpp">C++</span></td>
+          <td class="num">72.9<span class="unit">ms</span></td>
+          <td class="num">345.9<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what"><p>Memoised DFS, tables indexed <code>[value][position]</code> (<span class="bad">wrong order</span> 🙁)</p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">341.8<span class="unit">ms</span></td>
+          <td class="num">145.9<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what"><p>Same code: tables indexed <code>[position][value]</code></p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">169.4<span class="unit">ms</span></td>
+          <td class="num">146.0<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2022</td><td class="date day">Jun</td>
+          <td class="what"><p>Same code resubmitted (second attempt: only reformatted)</p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">171.4<span class="unit">ms</span></td>
+          <td class="num">146.0<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">May</td>
+          <td class="what"><p>Symmetric table with linked-list buckets: <code>u16</code> <code>dp</code> table + <code>u16</code> choice table</p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">91.7<span class="unit">ms</span></td>
+          <td class="num">98.5<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">May</td>
+          <td class="what"><p>Choice table dropped: only the <code>u16</code> <code>dp</code> table, as a <code>static</code></p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">79.7<span class="unit">ms</span></td>
+          <td class="num">50.7<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">May</td>
+          <td class="what"><p>Plus special cases for <code>k = 1</code>, <code>k = 2</code>, <code>k ≤ 3</code></p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">64.6<span class="unit">ms</span></td>
+          <td class="num">50.8<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">Nov</td>
+          <td class="what"><p>Layered DP: suffix maximum per layer, <code>1 bit</code> back pointers in a <code>static</code> array</p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">34.1<span class="unit">ms</span></td>
+          <td class="num">5.2<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">Nov</td>
+          <td class="what"><p>Line-by-line clone of the <code>Rust</code> code</p></td>
+          <td><span class="lang cpp">C++</span></td>
+          <td class="num">31.2<span class="unit">ms</span></td>
+          <td class="num win">4.9<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">Nov</td>
+          <td class="what"><p>Not submitted, local only: one in-place pass per layer, <code>NEON</code> suffix maximum, 8 cells at a time</p></td>
+          <td><span class="lang rs">Rust</span></td>
+          <td class="num">14.8<span class="unit">ms</span></td>
+          <td class="num">5.2<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">Nov</td>
+          <td class="what"><p>Not submitted, local only: twin of the <code>Rust</code> <code>NEON</code> code</p></td>
+          <td><span class="lang cpp">C++</span></td>
+          <td class="num win">14.5<span class="unit">ms</span></td>
+          <td class="num">5.0<span class="unit">MB</span></td>
         </tr>
       </tbody>
     </table>
