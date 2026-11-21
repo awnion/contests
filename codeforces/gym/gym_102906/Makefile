@@ -30,9 +30,17 @@ KOTLIN_JAR := $(BUILD_DIR)/f-kotlin.jar
 KOTLIN_NATIVE_SRC := $(BUILD_DIR)/f-kotlin-native.kt
 KOTLIN_NATIVE_BIN := $(BUILD_DIR)/f-kotlin-native.kexe
 
+# Extra variants: rust/<name>.rs -> build/rs-<name>, cpp/<name>.cpp -> build/cpp-<name>
+RUST_EXTRA := $(basename $(notdir $(wildcard rust/*.rs)))
+CPP_EXTRA := $(basename $(notdir $(wildcard cpp/*.cpp)))
+RUST_EXTRA_BINS := $(addprefix $(BUILD_DIR)/rs-,$(RUST_EXTRA))
+CPP_EXTRA_BINS := $(addprefix $(BUILD_DIR)/cpp-,$(CPP_EXTRA))
+EXTRA_JUDGE := $(addprefix judge-rs-,$(RUST_EXTRA)) $(addprefix judge-cpp-,$(CPP_EXTRA))
+
 .PHONY: help all build-all build-judge build-cpp build-rust build-kotlin build-native \
 	judge-cpp judge-cpp-dfs judge-rs judge-rs-dfs judge-kotlin \
-	judge-kotlin-native judge-py judge-py-dfs judge-py-bfs judge-all clean
+	judge-kotlin-native judge-py judge-py-dfs judge-py-bfs judge-all clean \
+	build-extra judge-extra $(EXTRA_JUDGE)
 
 help:
 	@echo "Build targets:"
@@ -56,6 +64,11 @@ help:
 	@echo "  make judge-py-bfs          run $(SOLUTIONS_DIR)/f_bfs.py with pypy3"
 	@echo "  make judge-all             run all judge targets above"
 	@echo
+	@echo "Extra variants from rust/ and cpp/:"
+	@echo "  make build-extra           build all of them"
+	@echo "  make judge-extra           run all of them"
+	@for t in $(EXTRA_JUDGE); do echo "  make $$t"; done
+	@echo
 	@echo "Override tools if needed, for example:"
 	@echo "  make CXX=g++ judge-cpp"
 
@@ -68,6 +81,7 @@ build-cpp: $(CPP_MAIN) $(CPP_DFS)
 build-rust: $(RUST_MAIN) $(RUST_DFS)
 build-kotlin: $(KOTLIN_JAR)
 build-native: $(KOTLIN_NATIVE_BIN)
+build-extra: $(RUST_EXTRA_BINS) $(CPP_EXTRA_BINS)
 
 $(BUILD_DIR)/.dir:
 	mkdir -p $(BUILD_DIR)
@@ -97,6 +111,23 @@ $(KOTLIN_NATIVE_SRC): $(SOLUTIONS_DIR)/f.kt | $(BUILD_DIR)/.dir
 
 $(KOTLIN_NATIVE_BIN): $(KOTLIN_NATIVE_SRC) | $(BUILD_DIR)/.dir
 	$(KOTLINC_NATIVE) $< $(KOTLIN_NATIVE_FLAGS) -o $(BUILD_DIR)/f-kotlin-native
+
+# Local-only variants may use flags a contest judge would not.
+$(BUILD_DIR)/rs-%_do_not_submit: RUST_FLAGS += -C panic=abort
+
+$(BUILD_DIR)/rs-%: rust/%.rs | $(BUILD_DIR)/.dir
+	$(RUSTC) $(RUST_FLAGS) $< -o $@
+
+$(BUILD_DIR)/cpp-%: cpp/%.cpp | $(BUILD_DIR)/.dir
+	$(CXX) $(CXX_FLAGS) $< -o $@
+
+$(addprefix judge-rs-,$(RUST_EXTRA)): judge-rs-%: $(JUDGE) $(BUILD_DIR)/rs-%
+	$(JUDGE) --test-data $(TEST_DATA) -s './$(BUILD_DIR)/rs-$*'
+
+$(addprefix judge-cpp-,$(CPP_EXTRA)): judge-cpp-%: $(JUDGE) $(BUILD_DIR)/cpp-%
+	$(JUDGE) --test-data $(TEST_DATA) -s './$(BUILD_DIR)/cpp-$*'
+
+judge-extra: $(EXTRA_JUDGE)
 
 judge-cpp: $(JUDGE) $(CPP_MAIN)
 	$(JUDGE) --test-data $(TEST_DATA) -s './$(CPP_MAIN)'

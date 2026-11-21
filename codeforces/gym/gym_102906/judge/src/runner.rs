@@ -1,7 +1,8 @@
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::os::unix::process::{CommandExt, ExitStatusExt};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -13,7 +14,9 @@ const ANSI_GREEN: &str = "\x1b[32m";
 const ANSI_YELLOW: &str = "\x1b[33m";
 const ANSI_MAGENTA: &str = "\x1b[35m";
 const ANSI_RED: &str = "\x1b[31m";
-const MEMORY_POLL_INTERVAL: Duration = Duration::from_millis(25);
+// Polling RSS is slow (on macOS it spawns `ps`), so it is only a safety net for runaway
+// processes: the reported peak comes from wait4's rusage, and short runs are never polled.
+const MEMORY_POLL_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, Clone)]
 pub struct RunRequest {
@@ -99,10 +102,12 @@ enum ForcedStop {
 
 pub fn run_bash_command(request: RunRequest) -> io::Result<RunOutcome> {
     let started_at = Instant::now();
-    let mut command = Command::new("bash");
+    let mut command = shell_free_command(&request.command).unwrap_or_else(|| {
+        let mut command = Command::new("bash");
+        command.arg("-c").arg(&request.command);
+        command
+    });
     command
-        .arg("-lc")
-        .arg(&request.command)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -133,6 +138,8 @@ pub fn run_bash_command(request: RunRequest) -> io::Result<RunOutcome> {
         .stderr
         .take()
         .ok_or_else(|| io::Error::other("child stderr was not captured"))?;
+    // The child is reaped with wait4 below, so `Child` must not wait for it again.
+    drop(child);
 
     let input = request.stdin;
     let stdin_thread = thread::spawn(move || {
@@ -146,46 +153,64 @@ pub fn run_bash_command(request: RunRequest) -> io::Result<RunOutcome> {
     let stdout_thread = thread::spawn(move || read_all(child_stdout));
     let stderr_thread = thread::spawn(move || read_all(child_stderr));
 
-    let mut forced_stop = None;
-    let mut peak_rss_bytes = None;
-    let mut next_memory_check = Instant::now();
+    // A dedicated thread blocks in wait4, so the exit is timestamped the moment it
+    // happens, whatever the main thread is doing.
+    let (exit_tx, exit_rx) = mpsc::channel();
+    thread::spawn(move || {
+        let waited = wait_with_rusage(child_pgid);
+        let _ = exit_tx.send((waited, started_at.elapsed()));
+    });
 
-    let exit_status = loop {
-        if let Some(status) = child.try_wait()? {
-            break status;
+    let mut forced_stop = None;
+    let mut polled_peak_rss = None;
+
+    let (waited, elapsed) = loop {
+        let mut wait_for = MEMORY_POLL_INTERVAL;
+        if let Some(limit) = request.limits.time_limit {
+            let Some(remaining) = limit.checked_sub(started_at.elapsed()) else {
+                forced_stop = Some(ForcedStop::TimeLimit);
+                kill_child_tree(child_pgid)?;
+                break exit_rx.recv().map_err(|_| io::Error::other("waiter thread died"))?;
+            };
+            wait_for = wait_for.min(remaining);
         }
 
-        let elapsed = started_at.elapsed();
-        if let Some(limit) = request.limits.time_limit {
-            if elapsed >= limit {
-                forced_stop = Some(ForcedStop::TimeLimit);
-                kill_child_tree(child_pgid, &mut child)?;
-                break child.wait()?;
+        match exit_rx.recv_timeout(wait_for) {
+            Ok(result) => break result,
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => {
+                return Err(io::Error::other("waiter thread died"));
             }
         }
 
         if let Some(limit) = request.limits.memory_limit_bytes {
-            if Instant::now() >= next_memory_check {
-                if let Some(rss) = process_group_rss_bytes(child_pgid)? {
-                    peak_rss_bytes = Some(peak_rss_bytes.map_or(rss, |peak: u64| peak.max(rss)));
-                    if rss > limit {
-                        forced_stop = Some(ForcedStop::MemoryLimit);
-                        kill_child_tree(child_pgid, &mut child)?;
-                        break child.wait()?;
-                    }
+            if let Some(rss) = process_group_rss_bytes(child_pgid)? {
+                polled_peak_rss = Some(polled_peak_rss.map_or(rss, |peak: u64| peak.max(rss)));
+                if rss > limit {
+                    forced_stop = Some(ForcedStop::MemoryLimit);
+                    kill_child_tree(child_pgid)?;
+                    break exit_rx.recv().map_err(|_| io::Error::other("waiter thread died"))?;
                 }
-                next_memory_check = Instant::now() + MEMORY_POLL_INTERVAL;
             }
         }
-
-        thread::sleep(Duration::from_millis(2));
     };
+    let (exit_status, rusage_peak_rss) = waited?;
+    let peak_rss_bytes = match (rusage_peak_rss, polled_peak_rss) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
+    };
+    if forced_stop.is_none() {
+        if let (Some(limit), Some(peak)) = (request.limits.memory_limit_bytes, peak_rss_bytes) {
+            if peak > limit {
+                forced_stop = Some(ForcedStop::MemoryLimit);
+            }
+        }
+    }
 
     join_stdin(stdin_thread)?;
     let stdout = join_reader(stdout_thread)?;
     let stderr = join_reader(stderr_thread)?;
 
-    let elapsed = started_at.elapsed();
     let exit_code = exit_status.code();
     let signal = exit_signal(exit_status);
     let (status, message) = classify_outcome(
@@ -206,6 +231,29 @@ pub fn run_bash_command(request: RunRequest) -> io::Result<RunOutcome> {
         peak_rss_bytes,
         message,
     })
+}
+
+/// A plain `program arg arg` line is spawned directly: starting bash costs several
+/// milliseconds per run. Anything with shell syntax still goes through `bash -c`.
+fn shell_free_command(line: &str) -> Option<Command> {
+    let plain = |c: char| c.is_ascii_alphanumeric() || " _-./+:,@%".contains(c);
+    if !line.chars().all(plain) {
+        return None;
+    }
+    let mut words = line.split(' ').filter(|word| !word.is_empty());
+    let program = words.next()?;
+    // Shell builtins and `VAR=value cmd` are not plain programs ('=' is not in the set above).
+    if !program.contains('/') && which_in_path(program).is_none() {
+        return None;
+    }
+    let mut command = Command::new(program);
+    command.args(words);
+    Some(command)
+}
+
+fn which_in_path(program: &str) -> Option<std::path::PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path).map(|dir| dir.join(program)).find(|candidate| candidate.is_file())
 }
 
 fn read_all(mut stream: impl Read) -> io::Result<Vec<u8>> {
@@ -344,7 +392,28 @@ fn set_memory_limit(bytes: u64) -> io::Result<()> {
     }
 }
 
-fn kill_child_tree(pgid: u32, child: &mut Child) -> io::Result<()> {
+/// Reaps the child and returns its exit status with the peak RSS reported by the kernel
+/// (covers the process and the descendants it waited for).
+fn wait_with_rusage(pid: u32) -> io::Result<(ExitStatus, Option<u64>)> {
+    let mut status: libc::c_int = 0;
+    let mut usage: libc::rusage = unsafe { std::mem::zeroed() };
+    loop {
+        let rc = unsafe { libc::wait4(pid as libc::pid_t, &mut status, 0, &mut usage) };
+        if rc >= 0 {
+            break;
+        }
+        let err = io::Error::last_os_error();
+        if err.kind() != io::ErrorKind::Interrupted {
+            return Err(err);
+        }
+    }
+    // ru_maxrss is in bytes on macOS and in kilobytes on Linux.
+    let unit = if cfg!(target_os = "macos") { 1 } else { 1024 };
+    let peak = u64::try_from(usage.ru_maxrss).ok().map(|v| v.saturating_mul(unit));
+    Ok((ExitStatus::from_raw(status), peak.filter(|&v| v > 0)))
+}
+
+fn kill_child_tree(pgid: u32) -> io::Result<()> {
     let rc = unsafe { libc::killpg(pgid as libc::pid_t, libc::SIGKILL) };
     if rc == 0 {
         return Ok(());
@@ -355,7 +424,7 @@ fn kill_child_tree(pgid: u32, child: &mut Child) -> io::Result<()> {
         return Ok(());
     }
 
-    child.kill()
+    Err(err)
 }
 
 #[cfg(target_os = "linux")]

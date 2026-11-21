@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Problem F — TLDR</title>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --text: #23262b;
+    --muted: #6b7280;
+    --line: #e6e3de;
+    --code-bg: #f1eee9;
+    --stripe: #f4f2ee;
+    --accent: #2f6f5e;
+    --accent-soft: #e8f2ee;
+    --warn: #a4502f;
+    --soft-red: #c8605c;
+    --lime: #5a9a12;
+    --red: #c62828;
+    --py: #5b7aa8; --cpp: #8a6fb0; --rs: #b0683f; --kt: #7f9b46;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17191c;
+      --panel: #1e2125;
+      --text: #e3e5e8;
+      --muted: #969ca6;
+      --line: #2e3237;
+      --code-bg: #292d32;
+      --stripe: #1d2024;
+      --accent: #7cc4ad;
+      --accent-soft: #1f2e2a;
+      --warn: #e09a78;
+      --soft-red: #ee9a96;
+      --lime: #a6e22e;
+      --red: #ff5a52;
+      --py: #8eabd6; --cpp: #b7a0d8; --rs: #dc9a73; --kt: #adc777;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 28px 24px;
+    background: var(--bg);
+    color: var(--text);
+    font: 19px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { margin: 0 auto; }
+  h1 {
+    margin: 0 0 2px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .lead { margin: 0 0 14px; font-size: 21px; line-height: 1.4; }
+  code {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--code-bg);
+    font: 0.88em/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    white-space: nowrap;
+  }
+  ul { margin: 2px 0 0; padding-left: 22px; }
+  li { margin: 1px 0; }
+  li::marker { color: var(--muted); }
+
+  .families { margin: 0 0 24px; }
+  .family { padding: 0; }
+  .family + .family { margin-top: 14px; }
+  .family.assumed { border-left-color: var(--accent); }
+  .family .tag { color: var(--accent); }
+  .family.alt { border-left-color: var(--rs); }
+  .family.alt .tag { color: var(--rs); }
+  .family.disclaimer { border-left-color: var(--soft-red); }
+  .family.disclaimer .tag, .family.disclaimer h2 small { color: var(--soft-red); }
+  .family h2 { margin: 0; font-size: 20px; font-weight: 400; }
+  .family .tag { font-weight: 700; }
+  .family h2 small { display: block; font-size: 17px; font-weight: 400; color: var(--muted); }
+  .family ul { font-size: 17px; color: var(--muted); }
+  .family code { white-space: normal; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: max-content; max-width: 100%; border-collapse: collapse; }
+  td { padding: 7px 28px 7px 0; text-align: left; vertical-align: top; white-space: nowrap; }
+  td:last-child { padding-right: 0; }
+  tbody tr + tr td { border-top: 1px solid var(--line); }
+  td.date { color: var(--muted); font-variant-numeric: tabular-nums; }
+  td.year { padding-right: 10px; }
+  td.what { white-space: normal; }
+  td.what p { margin: 0; }
+  td.num { text-align: right; font: 20px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .num b { font-weight: 400; }
+  .bang { position: absolute; margin: 6px 0 0 4px; font-size: 14px; font-weight: 700; color: var(--lime); }
+  .unit { margin-left: 5px; font-size: 14px; font-weight: 400; color: var(--muted); }
+  .lang {
+    display: inline-block;
+    padding: 0 9px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 16px;
+  }
+  .py { color: var(--py); } .cpp { color: var(--cpp); } .rs { color: var(--rs); } .kt { color: var(--kt); }
+  .good { color: var(--accent); font-weight: 600; }
+  .bad { color: var(--red); font-weight: 600; }
+  .soft-red { color: var(--soft-red); }
+  .lime { color: var(--lime); font-weight: 700; }
+  .limit { color: var(--soft-red); font-weight: 600; }
+  .dim, .dim code { color: var(--muted); }
+  td.num.win { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <p class="lead">
+    2021... Last problem (Russian Olympiad in Informatics 2020—2021, St. Petersburg)...
+    Typical DP hard problem which I started to use as my brain benchmark:
+  </p>
+
+  <div class="families">
+    <section class="family assumed">
+      <h2><span class="tag">1st</span> and straightforward: symmetric DP over all <code>(i, j)</code> pairs: relatively easy 90 lines in <code>C++</code> for experienced contestants with a preallocated stack</h2>
+    </section>
+    <section class="family alt">
+      <h2><span class="tag">2nd</span> faster solution is DP by answer length:</h2>
+      <ul>
+        <li>swap the answer with a state dimension: for each length <code>l</code> and position <code>i</code> in <code>A</code> keep the furthest reachable position in <code>B</code></li>
+        <li><span class="soft-red">No one assumes you can write it online.</span> But it’s cool to theorycraft around here 😎</li>
+        <li>Transition is not hard to spot: <code>best[l + 1][nextA(i, x)] = max(nextB(best[l][i], x))</code>, but it’s quite hard (annoying) to implement bug-free in an online contest. Usually not worth the risk.</li>
+      </ul>
+    </section>
+    <section class="family disclaimer">
+      <h2><span class="tag">DISCLAIMER!</span> <small>On Codeforces <code>Rust</code> can’t use a 100 MB static stack, unlike <code>C++</code>. <span class="dim">So it’s not an apples-to-apples comparison. All numbers are just for illustration.</span></small></h2>
+    </section>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what">
+            <p><b>First full score</b> on <code>PyPy</code>: barely squeezed into <span class="limit">1000 ms</span>!</p>
+            <ul>
+              <li>but had to use the “annoying smart alternative solution” (aka <code>Layered DP</code>)</li>
+              <li>and I’m still the only one who could squeeze a Python-like solution for the problem 🤷</li>
+            </ul>
+          </td>
+          <td><span class="lang py">PyPy 3</span></td>
+          <td class="num"><b>967</b><span class="unit">ms</span></td>
+          <td class="num">195.0<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what">
+            <p>Layered DP in <code>C++</code> → <span class="good">fastest</span> solution overall for the next <b>5.7 years</b></p>
+          </td>
+          <td><span class="lang cpp">C++17</span></td>
+          <td class="num"><b>171</b><span class="unit">ms</span></td>
+          <td class="num">478.8<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what">
+            <p>Memoised DFS in <code>Rust</code>: tables indexed <code>[value][position]</code> → <span class="bad">wrong order</span> 🙁</p>
+          </td>
+          <td><span class="lang rs">Rust 2018</span></td>
+          <td class="num"><b>997</b><span class="unit">ms</span></td>
+          <td class="num">143.8<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Feb</td>
+          <td class="what">
+            <p>Same code: just tables indexed <code>[position][value]</code> → <span class="good">2.7x faster!!!</span></p>
+          </td>
+          <td><span class="lang rs">Rust 2018</span></td>
+          <td class="num"><b>374</b><span class="unit">ms</span></td>
+          <td class="num">143.8<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2021</td><td class="date day">Mar</td>
+          <td class="what">
+            <p>Memoised DFS in <code>Kotlin</code></p>
+            <ul>
+              <li><code>Kotlin</code> unlike <code>Rust</code> isn’t that sensitive to the index order</li>
+              <li>first attempt <b>good enough</b></li>
+            </ul>
+          </td>
+          <td><span class="lang kt">Kotlin 1.4</span></td>
+          <td class="num"><b>686</b><span class="unit">ms</span></td>
+          <td class="num">378.2<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2022</td><td class="date day">Jun</td>
+          <td class="what"><p>After more than a year I’m trying to improve…</p></td>
+          <td><span class="lang rs">Rust 2021</span></td>
+          <td class="num"><b>358</b><span class="unit">ms</span></td>
+          <td class="num">145.3<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">May</td>
+          <td class="what">
+            <p>Years passed… <span class="lime">GPT 5.5 Released!</span><br>
+              Revisited the solution with <code>GPT 5.5</code>: <b>almost beat</b> <code>C++</code> in heap-based <code>Rust</code> and <span class="good">8x less memory</span> than <code>C++</code>!!!</p>
+          </td>
+          <td><span class="lang rs">Rust 2024</span></td>
+          <td class="num"><b>187</b><span class="unit">ms</span></td>
+          <td class="num">59.1<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">Nov</td>
+          <td class="what">
+            <p><span class="lime">Fable 5.2 Released!</span><br>
+              WTF?? <b>IS THIS WITCHCRAFT</b>. Ok Ok. In hindsight it’s not that hard:</p>
+            <ul>
+              <li class="dim">a layer solution from <code>PyPy</code></li>
+              <li>a back pointer always targets a <b>“corner”</b> of the layer
+                <ul>
+                  <li><code>1 bit</code> per cell instead of <code>u16</code> → <span class="good">160x less memory</span> than <code>C++</code></li>
+                </ul>
+              </li>
+              <li>the bit table is a fixed-size <code>static</code> array
+                <ul>
+                  <li>no heap growth</li>
+                  <li>no stack limit</li>
+                </ul>
+              </li>
+            </ul>
+          </td>
+          <td><span class="lang rs">Rust 2024</span></td>
+          <td class="num">93<span class="unit">ms</span><span class="bang">(!)</span></td>
+          <td class="num win">3.0<span class="unit">MB</span></td>
+        </tr>
+        <tr>
+          <td class="date year">2026</td><td class="date day">Nov</td>
+          <td class="what">
+            <p>Line-by-line clone of the <code>Rust</code> code in <code>C++</code></p>
+            <ul>
+              <li><span class="good">fastest</span> in any language, <b>1.2x faster</b> than <code>Rust</code>: same algorithm, so it’s the compiler and runtime (or noise: one run each)</li>
+              <li>4x more RAM than <code>Rust</code>: every table is a static array sized for the worst case</li>
+            </ul>
+          </td>
+          <td><span class="lang cpp">C++23</span></td>
+          <td class="num win">78<span class="unit">ms</span></td>
+          <td class="num">11.8<span class="unit">MB</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>
